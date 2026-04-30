@@ -33,18 +33,21 @@ jobs:
       - name: Construir el Super JAR
         run: ./gradlew shadowJar
 
-      # Ejecutar la tarea de Launch4j para crear el archivo .exe
-      - name: Construir el ejecutable EXE
-        run: ./gradlew createExe
+      # Generar el ejecutable nativo de Windows con jpackage (Incluye máquina virtual Java propia)
+      - name: Construir el ejecutable Windows
+        run: |
+          jpackage --type app-image --name TallerII --input build/libs --main-jar TallerII-1.0-SNAPSHOT.jar --main-class com.programacion.Principal --dest build/jpackage
+          Compress-Archive -Path "build/jpackage/TallerII" -DestinationPath "TallerII-Windows-Standalone.zip"
+        shell: pwsh
 
       # Tomar los archivos generados y publicarlos en GitHub Releases
       - name: Crear Release en GitHub
         uses: softprops/action-gh-release@v1
         with:
-          # Adjuntamos el JAR y el EXE
+          # Adjuntamos el JAR y el archivo ZIP que contiene el EXE
           files: |
             build/libs/*.jar
-            build/launch4j/*.exe
+            TallerII-Windows-Standalone.zip
           generate_release_notes: true # Genera las notas de la versión automáticamente usando los commits
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
