@@ -9,20 +9,23 @@ y este proyecto se adhiere a [Versionado Semántico](https://semver.org/lang/es/
 
 Aquí puedes ir anotando los cambios que estás haciendo y que aún no has lanzado en una nueva versión.
 
+---
+
+## [1.0.2] - 2026-05-01
+
 ### Añadido (Added)
 - Nueva interfaz visual con FlatLaf.
 - Funcionalidad de prueba.
+- Organización de filtros por categorías en el panel lateral.
+- Configuración de release para generar el JAR ejecutable y el paquete standalone de Windows.
 
 ### Cambiado (Changed)
 - Refactorización de la estructura principal.
+- Versión del proyecto actualizada a `1.0.2`.
+- Workflow de release ajustado para usar el JAR generado por Gradle sin depender de nombres `SNAPSHOT`.
 
 ### Corregido (Fixed)
 - Solución de errores menores.
+- Manifest del JAR configurado con la clase principal de la aplicación.
 
 ---
-
-## [1.0.0] - AAAA-MM-DD (Ejemplo de tu primer release a futuro)
-
-### Añadido (Added)
-- Configuración inicial del proyecto con Gradle.
-- Pipeline de GitHub Actions para generar el JAR y EXE automáticamente.

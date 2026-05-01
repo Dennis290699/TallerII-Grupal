@@ -36,7 +36,8 @@ jobs:
       # Generar el ejecutable nativo de Windows con jpackage (Incluye máquina virtual Java propia)
       - name: Construir el ejecutable Windows
         run: |
-          jpackage --type app-image --name TallerII --input build/libs --main-jar TallerII-1.0-SNAPSHOT.jar --main-class com.programacion.Principal --dest build/jpackage
+          $jarName = (Get-ChildItem -Path build/libs -Filter "TallerII-*.jar" | Select-Object -First 1).Name
+          jpackage --type app-image --name TallerII --input build/libs --main-jar $jarName --main-class com.programacion.Principal --dest build/jpackage
           Compress-Archive -Path "build/jpackage/TallerII" -DestinationPath "TallerII-Windows-Standalone.zip"
         shell: pwsh
 

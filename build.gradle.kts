@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "org.example"
-version = "1.0-SNAPSHOT"
+version = "1.0.2"
 
 repositories {
     mavenCentral()
@@ -28,5 +28,9 @@ tasks.shadowJar {
     archiveBaseName.set("TallerII")
     archiveClassifier.set("")
     archiveVersion.set(project.version.toString())
+    manifest {
+        attributes["Main-Class"] = application.mainClass.get()
+        attributes["Implementation-Version"] = project.version
+    }
     mergeServiceFiles()
 }
