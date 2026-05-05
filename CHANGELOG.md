@@ -11,6 +11,19 @@ Aquí puedes ir anotando los cambios que estás haciendo y que aún no has lanza
 
 ---
 
+## [1.0.3] - 2026-05-05
+
+### Añadido (Added)
+- Nuevo diseño visual de la aplicación.
+- Apartado de editor avanzado para nuevas herramientas de edición.
+- Filtro de ajuste RGB.
+
+### Cambiado (Changed)
+- Versión del proyecto actualizada a `1.0.3`.
+- Limpieza de artefactos generados de la carpeta `build/` que no deben mantenerse en el repositorio.
+
+---
+
 ## [1.0.2] - 2026-05-01
 
 ### Añadido (Added)
