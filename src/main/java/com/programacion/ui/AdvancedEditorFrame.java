@@ -15,7 +15,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.Stack;
 
-public class AdvancedEditorFrame extends JFrame {
+public class AdvancedEditorFrame extends JPanel {
     private MainFrame parentFrame;
     private BufferedImage originalImage;
     private BufferedImage currentImage;
@@ -55,18 +55,7 @@ public class AdvancedEditorFrame extends JFrame {
         this.currentImage = copyImage(initialImage);
         this.isDarkMode = isDarkMode;
 
-        setTitle("Editor Avanzado - Modo Apilado");
-        setSize(1100, 750);
-        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
-        setLocationRelativeTo(null);
         setLayout(new BorderLayout());
-
-        addWindowListener(new java.awt.event.WindowAdapter() {
-            @Override
-            public void windowClosing(java.awt.event.WindowEvent windowEvent) {
-                volverAlPrincipal();
-            }
-        });
 
         initToolbar();
         initWorkspace();
@@ -469,7 +458,7 @@ public class AdvancedEditorFrame extends JFrame {
             } else {
                 UIManager.setLookAndFeel(new FlatLightLaf());
             }
-            SwingUtilities.updateComponentTreeUI(this);
+            SwingUtilities.updateComponentTreeUI(parentFrame);
             parentFrame.syncTheme(isDarkMode); // Synchronize with parent
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -478,8 +467,7 @@ public class AdvancedEditorFrame extends JFrame {
 
     private void volverAlPrincipal() {
         cerrarVentanasFlotantes();
-        this.dispose();
-        parentFrame.setVisible(true);
+        parentFrame.mostrarSimpleMode();
     }
 
     // --- Herramientas Dinámicas ---
@@ -488,7 +476,7 @@ public class AdvancedEditorFrame extends JFrame {
             ventanaTransparencia.toFront(); return;
         }
 
-        ventanaTransparencia = new JDialog(this, "Ajustar Transparencia", false);
+        ventanaTransparencia = new JDialog(parentFrame, "Ajustar Transparencia", false);
         ventanaTransparencia.setLayout(new BorderLayout());
 
         JSlider slider = new JSlider(0, 100, ultimoValorTransparencia);
@@ -518,7 +506,7 @@ public class AdvancedEditorFrame extends JFrame {
             ventanaMascara.toFront(); return;
         }
 
-        ventanaMascara = new JDialog(this, "Máscaras de Bits", false);
+        ventanaMascara = new JDialog(parentFrame, "Máscaras de Bits", false);
         ventanaMascara.setLayout(new BorderLayout());
 
         JSlider slider = new JSlider(1, 8, ultimoValorMascara);
@@ -547,7 +535,7 @@ public class AdvancedEditorFrame extends JFrame {
             ventanaRGB.toFront(); return;
         }
 
-        ventanaRGB = new JDialog(this, "Ajuste RGB", false);
+        ventanaRGB = new JDialog(parentFrame, "Ajuste RGB", false);
         ventanaRGB.setLayout(new BoxLayout(ventanaRGB.getContentPane(), BoxLayout.Y_AXIS));
 
         // Reset local values for new session
@@ -584,7 +572,7 @@ public class AdvancedEditorFrame extends JFrame {
             ventanaHistograma.toFront(); return;
         }
 
-        ventanaHistograma = new JDialog(this, "Histograma de Imagen", false);
+        ventanaHistograma = new JDialog(parentFrame, "Histograma de Imagen", false);
         ventanaHistograma.setLayout(new BorderLayout());
 
         HistogramPanel histogramPanel = new HistogramPanel();
@@ -641,8 +629,8 @@ public class AdvancedEditorFrame extends JFrame {
     }
 
     private void posicionarVentana(JDialog dialog, int yOffset) {
-        int xPos = this.getX() + this.getWidth() - dialog.getWidth() - 30;
-        int yPos = this.getY() + yOffset;
+        int xPos = parentFrame.getX() + parentFrame.getWidth() - dialog.getWidth() - 30;
+        int yPos = parentFrame.getY() + yOffset;
         dialog.setLocation(xPos, yPos);
         dialog.setVisible(true);
     }
@@ -652,7 +640,7 @@ public class AdvancedEditorFrame extends JFrame {
             ventanaHSV.toFront(); return;
         }
 
-        ventanaHSV = new JDialog(this, "Ajuste HSV", false);
+        ventanaHSV = new JDialog(parentFrame, "Ajuste HSV", false);
         ventanaHSV.setLayout(new BoxLayout(ventanaHSV.getContentPane(), BoxLayout.Y_AXIS));
 
         valH = 0; valS = 0; valV = 0;
@@ -699,7 +687,7 @@ public class AdvancedEditorFrame extends JFrame {
             ventanaMatrices.toFront(); return;
         }
 
-        ventanaMatrices = new JDialog(this, "Matrices de Color", false);
+        ventanaMatrices = new JDialog(parentFrame, "Matrices de Color", false);
         ventanaMatrices.setLayout(new BorderLayout());
 
         String[] presets = {"Neutro", "Sepia", "Vintage", "Polaroid", "Escala de Grises", "Invertir Colores", "Cálido", "Frío"};

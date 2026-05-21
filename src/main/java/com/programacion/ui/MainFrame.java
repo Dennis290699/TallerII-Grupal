@@ -24,6 +24,7 @@ public class MainFrame extends JFrame {
     private JLayeredPane layeredPane;
     private HistogramPanel miniHistogramPanel;
     private boolean isDarkMode = true;
+    private Container simpleModeContentPane;
 
     private int ultimoValorTransparencia = 50;
     private JDialog ventanaTransparencia = null;
@@ -36,7 +37,7 @@ public class MainFrame extends JFrame {
     private int ultimoSatHSV = 0;
     private int ultimoValHSV = 0;
 
-    private JButton btnCargar, btnLimpiar, btnGuardar, btnTema, btnVerOriginal, btnModoApilado;
+    private JButton btnCargar, btnLimpiar, btnGuardar, btnTema, btnVerOriginal, btnModoApilado, btnBlendingMulticapa;
 
     public MainFrame() {
         setTitle("Editor de Imágenes Universitario");
@@ -96,6 +97,9 @@ public class MainFrame extends JFrame {
         btnModoApilado = new JButton("Modo Apilado (Avanzado)");
         btnModoApilado.addActionListener(e -> abrirEditorAvanzado());
 
+        btnBlendingMulticapa = new JButton("Blending Multicapa");
+        btnBlendingMulticapa.addActionListener(e -> abrirMezcladorBlending());
+
         toolBar.add(btnCargar);
         toolBar.addSeparator();
         toolBar.add(btnLimpiar);
@@ -105,6 +109,8 @@ public class MainFrame extends JFrame {
         toolBar.add(btnVerOriginal);
         toolBar.addSeparator();
         toolBar.add(btnModoApilado);
+        toolBar.addSeparator();
+        toolBar.add(btnBlendingMulticapa);
         toolBar.add(Box.createHorizontalGlue());
         toolBar.add(btnTema);
 
@@ -118,6 +124,11 @@ public class MainFrame extends JFrame {
         btnVerOriginal.setIcon(loadIcon("/assets/icons/eye.png", 20)); // Añade un icono de ojo si tienes
         ImageIcon clearIcon = loadIcon("/assets/icons/delete.png", 20);
         if (clearIcon != null) btnLimpiar.setIcon(clearIcon);
+        
+        ImageIcon blendIcon = loadIcon("/assets/icons/clear-filter.png", 20);
+        if (blendIcon != null && btnBlendingMulticapa != null) {
+            btnBlendingMulticapa.setIcon(blendIcon);
+        }
     }
 
     private ImageIcon loadIcon(String path, int size) {
@@ -729,16 +740,41 @@ public class MainFrame extends JFrame {
         }
     }
 
+    public void mostrarSimpleMode() {
+        if (simpleModeContentPane != null) {
+            setContentPane(simpleModeContentPane);
+            setTitle("Editor de Imágenes Universitario");
+            revalidate();
+            repaint();
+        }
+    }
+
     private void abrirEditorAvanzado() {
         if (originalImage == null) {
             JOptionPane.showMessageDialog(this, "Carga una imagen primero.");
             return;
         }
         cerrarVentanasFlotantes();
-        this.setVisible(false);
-        // Pasamos la imagen que se está viendo actualmente (puede ser con 1 filtro ya) para seguir apilando
-        AdvancedEditorFrame advanced = new AdvancedEditorFrame(this, filteredImage, isDarkMode);
-        advanced.setVisible(true);
+        if (simpleModeContentPane == null) {
+            simpleModeContentPane = getContentPane();
+        }
+        AdvancedEditorFrame advancedPanel = new AdvancedEditorFrame(this, originalImage, isDarkMode);
+        setContentPane(advancedPanel);
+        setTitle("Editor Avanzado - Modo Apilado");
+        revalidate();
+        repaint();
+    }
+
+    private void abrirMezcladorBlending() {
+        cerrarVentanasFlotantes();
+        if (simpleModeContentPane == null) {
+            simpleModeContentPane = getContentPane();
+        }
+        BlendingFrame blendingPanel = new BlendingFrame(this, isDarkMode);
+        setContentPane(blendingPanel);
+        setTitle("Mezclador Blending Multicapa");
+        revalidate();
+        repaint();
     }
 
     private void accionTransparenciaAjustable() {
