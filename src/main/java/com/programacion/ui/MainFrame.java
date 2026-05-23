@@ -40,8 +40,8 @@ public class MainFrame extends JFrame {
     private JButton btnCargar, btnLimpiar, btnGuardar, btnTema, btnVerOriginal, btnModoApilado, btnBlendingMulticapa;
 
     public MainFrame() {
-        setTitle("Editor de Imágenes Universitario");
-        setSize(1100, 750);
+        setTitle("LuminaFX - Editor de Imágenes");
+        setSize(1150, 780);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
@@ -56,18 +56,29 @@ public class MainFrame extends JFrame {
     private void initToolbar() {
         JToolBar toolBar = new JToolBar();
         toolBar.setFloatable(false);
-        toolBar.setMargin(new Insets(5, 10, 5, 10));
+        toolBar.setMargin(new Insets(6, 12, 6, 12));
+
+        // Branding de LuminaFX
+        JLabel lblLogo = new JLabel("✨ LuminaFX");
+        lblLogo.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        lblLogo.setForeground(new Color(99, 102, 241)); // Color índigo premium
+        toolBar.add(lblLogo);
+        toolBar.add(Box.createRigidArea(new Dimension(15, 0)));
 
         btnCargar = new JButton("Cargar");
+        btnCargar.putClientProperty("JButton.buttonType", "toolBarButton");
         btnCargar.addActionListener(e -> accionCargar());
 
         btnLimpiar = new JButton("Limpiar");
+        btnLimpiar.putClientProperty("JButton.buttonType", "toolBarButton");
         btnLimpiar.addActionListener(e -> accionLimpiar());
 
         btnGuardar = new JButton("Guardar");
+        btnGuardar.putClientProperty("JButton.buttonType", "toolBarButton");
         btnGuardar.addActionListener(e -> accionGuardar());
 
-        btnVerOriginal = new JButton("Mantener para ver Original");
+        btnVerOriginal = new JButton("Ver Original");
+        btnVerOriginal.putClientProperty("JButton.buttonType", "toolBarButton");
         btnVerOriginal.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnVerOriginal.addMouseListener(new MouseAdapter() {
             private Component previousView;
@@ -91,14 +102,17 @@ public class MainFrame extends JFrame {
             }
         });
 
-        btnTema = new JButton("Tema");
-        btnTema.addActionListener(e -> accionCambiarTema());
-
-        btnModoApilado = new JButton("Modo Apilado (Avanzado)");
+        btnModoApilado = new JButton("Modo Apilado");
+        btnModoApilado.putClientProperty("JButton.buttonType", "toolBarButton");
         btnModoApilado.addActionListener(e -> abrirEditorAvanzado());
 
-        btnBlendingMulticapa = new JButton("Blending Multicapa");
+        btnBlendingMulticapa = new JButton("Blending");
+        btnBlendingMulticapa.putClientProperty("JButton.buttonType", "toolBarButton");
         btnBlendingMulticapa.addActionListener(e -> abrirMezcladorBlending());
+
+        btnTema = new JButton();
+        btnTema.putClientProperty("JButton.buttonType", "toolBarButton");
+        btnTema.addActionListener(e -> accionCambiarTema());
 
         toolBar.add(btnCargar);
         toolBar.addSeparator();
@@ -118,41 +132,13 @@ public class MainFrame extends JFrame {
     }
 
     private void updateIcons() {
-        btnCargar.setIcon(loadIcon("/assets/icons/add.png", 20));
-        btnGuardar.setIcon(loadIcon("/assets/icons/save.png", 20));
-        btnTema.setIcon(loadIcon("/assets/icons/theme.png", 20));
-        btnVerOriginal.setIcon(loadIcon("/assets/icons/eye.png", 20)); // Añade un icono de ojo si tienes
-        ImageIcon clearIcon = loadIcon("/assets/icons/delete.png", 20);
-        if (clearIcon != null) btnLimpiar.setIcon(clearIcon);
-        
-        ImageIcon blendIcon = loadIcon("/assets/icons/clear-filter.png", 20);
-        if (blendIcon != null && btnBlendingMulticapa != null) {
-            btnBlendingMulticapa.setIcon(blendIcon);
-        }
-    }
-
-    private ImageIcon loadIcon(String path, int size) {
-        try {
-            java.net.URL imgUrl = getClass().getResource(path);
-            if (imgUrl == null) return null;
-            BufferedImage img = ImageIO.read(imgUrl);
-            if (!isDarkMode) img = invertImageColors(img);
-            Image resized = img.getScaledInstance(size, size, Image.SCALE_SMOOTH);
-            return new ImageIcon(resized);
-        } catch (Exception e) { return null; }
-    }
-
-    private BufferedImage invertImageColors(BufferedImage image) {
-        int w = image.getWidth(), h = image.getHeight();
-        BufferedImage res = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
-        for (int y = 0; y < h; y++) {
-            for (int x = 0; x < w; x++) {
-                int p = image.getRGB(x, y);
-                Color c = new Color(p, true);
-                res.setRGB(x, y, new Color(255 - c.getRed(), 255 - c.getGreen(), 255 - c.getBlue(), c.getAlpha()).getRGB());
-            }
-        }
-        return res;
+        btnCargar.setIcon(new ModernIcon("cargar", 16));
+        btnGuardar.setIcon(new ModernIcon("guardar", 16));
+        btnTema.setIcon(new ModernIcon("tema", 16));
+        btnVerOriginal.setIcon(new ModernIcon("ver", 16));
+        btnLimpiar.setIcon(new ModernIcon("limpiar", 16));
+        btnModoApilado.setIcon(new ModernIcon("avanzado", 16));
+        btnBlendingMulticapa.setIcon(new ModernIcon("blending", 16));
     }
 
     // --- WORKSPACE UNIFICADO ---
@@ -185,26 +171,29 @@ public class MainFrame extends JFrame {
         add(layeredPane, BorderLayout.CENTER);
     }
 
-    // --- BARRA LATERAL DERECHA (ESTILO LIGHTROOM) ---
+    // --- BARRA LATERAL DERECHA (ESTILO TABS POR CATEGORÍAS) ---
     private void initRightSidebar() {
-        JPanel sidebar = new JPanel();
-        sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
-        sidebar.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        JPanel sidebarWrapper = new JPanel(new BorderLayout());
+        sidebarWrapper.setBorder(BorderFactory.createMatteBorder(0, 1, 0, 0, UIManager.getColor("Component.borderColor")));
+        sidebarWrapper.setPreferredSize(new Dimension(300, 0));
 
-        // Sección: Filtros de Color
-        sidebar.add(crearEncabezado("FILTROS DE COLOR", false));
-        agregarBotonFiltro(sidebar, new GrayscaleFilter(255));
-        agregarBotonFiltro(sidebar, new NegativeFilter());
-        agregarBotonFiltro(sidebar, new BlackAndWhiteFilter());
+        JTabbedPane tabbedPane = new JTabbedPane();
 
-        // Sección: Efectos Especiales
-        sidebar.add(crearEncabezado("EFECTOS VISUALES", true));
-        agregarBotonFiltro(sidebar, new FrostedGlassFilter());
-        agregarBotonFiltro(sidebar, new CircularFadeFilter());
+        // Pestaña 1: Filtros de Color y Efectos
+        JPanel tabFiltros = new JPanel();
+        tabFiltros.setLayout(new BoxLayout(tabFiltros, BoxLayout.Y_AXIS));
+        tabFiltros.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
 
-        // Sección: Convoluciones (En un combo para no saturar)
-        sidebar.add(crearEncabezado("ENFOQUE Y DESENFOQUE", true));
+        tabFiltros.add(crearEncabezado("FILTROS DE COLOR", false));
+        agregarBotonFiltro(tabFiltros, new GrayscaleFilter(255));
+        agregarBotonFiltro(tabFiltros, new NegativeFilter());
+        agregarBotonFiltro(tabFiltros, new BlackAndWhiteFilter());
 
+        tabFiltros.add(crearEncabezado("EFECTOS VISUALES", true));
+        agregarBotonFiltro(tabFiltros, new FrostedGlassFilter());
+        agregarBotonFiltro(tabFiltros, new CircularFadeFilter());
+
+        tabFiltros.add(crearEncabezado("ENFOQUE Y DESENFOQUE", true));
         ImageFilter[] convoluciones = {
             ConvolutionFilter.Enfoque(), ConvolutionFilter.Desenfoque(), ConvolutionFilter.DesenfoquePesado(),
             ConvolutionFilter.Bordes(), ConvolutionFilter.Aclarar(), ConvolutionFilter.Oscurecer()
@@ -221,49 +210,73 @@ public class MainFrame extends JFrame {
                 aplicarFiltro(convoluciones[idx - 1]);
             }
         });
-        sidebar.add(comboConvolucion);
+        tabFiltros.add(comboConvolucion);
+        tabFiltros.add(Box.createVerticalGlue());
 
-        // Sección: Herramientas Dinámicas
-        sidebar.add(crearEncabezado("HERRAMIENTAS DINÁMICAS", true));
+        JScrollPane scrollFiltros = new JScrollPane(tabFiltros);
+        scrollFiltros.setBorder(null);
+        tabbedPane.addTab("Filtros", new ModernIcon("avanzado", 14), scrollFiltros);
+
+        // Pestaña 2: Ajustes Dinámicos
+        JPanel tabAjustes = new JPanel();
+        tabAjustes.setLayout(new BoxLayout(tabAjustes, BoxLayout.Y_AXIS));
+        tabAjustes.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+
+        tabAjustes.add(crearEncabezado("HERRAMIENTAS DINÁMICAS", false));
 
         JButton btnTrans = new JButton("Transparencia Ajustable");
         btnTrans.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
         btnTrans.setAlignmentX(Component.CENTER_ALIGNMENT);
+        btnTrans.putClientProperty("JButton.buttonType", "roundRect");
         btnTrans.addActionListener(e -> accionTransparenciaAjustable());
-        sidebar.add(btnTrans);
-        sidebar.add(Box.createRigidArea(new Dimension(0, 5)));
+        tabAjustes.add(btnTrans);
+        tabAjustes.add(Box.createRigidArea(new Dimension(0, 8)));
 
         JButton btnMasc = new JButton("Máscaras de Bits");
         btnMasc.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
         btnMasc.setAlignmentX(Component.CENTER_ALIGNMENT);
+        btnMasc.putClientProperty("JButton.buttonType", "roundRect");
         btnMasc.addActionListener(e -> accionMascaraBitsAdjustable());
-        sidebar.add(btnMasc);
-        sidebar.add(Box.createRigidArea(new Dimension(0, 5)));
+        tabAjustes.add(btnMasc);
+        tabAjustes.add(Box.createRigidArea(new Dimension(0, 8)));
 
         JButton btnHSV = new JButton("Ajuste HSV");
         btnHSV.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
         btnHSV.setAlignmentX(Component.CENTER_ALIGNMENT);
+        btnHSV.putClientProperty("JButton.buttonType", "roundRect");
         btnHSV.addActionListener(e -> accionAjusteHSV());
-        sidebar.add(btnHSV);
-        sidebar.add(Box.createRigidArea(new Dimension(0, 5)));
+        tabAjustes.add(btnHSV);
+        tabAjustes.add(Box.createRigidArea(new Dimension(0, 8)));
 
         JButton btnMatrices = new JButton("Matrices de Color");
         btnMatrices.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
         btnMatrices.setAlignmentX(Component.CENTER_ALIGNMENT);
+        btnMatrices.putClientProperty("JButton.buttonType", "roundRect");
         btnMatrices.addActionListener(e -> accionMatricesColor());
-        sidebar.add(btnMatrices);
+        tabAjustes.add(btnMatrices);
+        tabAjustes.add(Box.createVerticalGlue());
 
-        // Sección: Análisis
-        sidebar.add(crearEncabezado("VISTAS DE ANÁLISIS", true));
+        JScrollPane scrollAjustes = new JScrollPane(tabAjustes);
+        scrollAjustes.setBorder(null);
+        tabbedPane.addTab("Ajustes", new ModernIcon("blending", 14), scrollAjustes);
+
+        // Pestaña 3: Análisis de Imagen
+        JPanel tabAnalisis = new JPanel();
+        tabAnalisis.setLayout(new BoxLayout(tabAnalisis, BoxLayout.Y_AXIS));
+        tabAnalisis.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+
+        tabAnalisis.add(crearEncabezado("VISTAS DE ANÁLISIS", false));
 
         JButton btnHistograma = new JButton("Ver Histograma");
         btnHistograma.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
         btnHistograma.setAlignmentX(Component.CENTER_ALIGNMENT);
-        btnHistograma.setBackground(new Color(120, 80, 160));
+        btnHistograma.putClientProperty("JButton.buttonType", "roundRect");
+        btnHistograma.setBackground(new Color(99, 102, 241));
         btnHistograma.setForeground(Color.WHITE);
+        btnHistograma.setIcon(new ModernIcon("histograma", 16, Color.WHITE));
         btnHistograma.addActionListener(e -> accionHistograma());
-        sidebar.add(btnHistograma);
-        sidebar.add(Box.createRigidArea(new Dimension(0, 5)));
+        tabAnalisis.add(btnHistograma);
+        tabAnalisis.add(Box.createRigidArea(new Dimension(0, 10)));
 
         String[] analisis = {
             "Bits", "Canales", "Retro 1", "Retro 2", "Radiales", "Estiramiento", "Convoluciones"
@@ -274,34 +287,41 @@ public class MainFrame extends JFrame {
         comboAnalisis.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
         comboAnalisis.setAlignmentX(Component.CENTER_ALIGNMENT);
         comboAnalisis.addActionListener(e -> ejecutarAnalisis(comboAnalisis.getSelectedIndex()));
-        sidebar.add(comboAnalisis);
+        tabAnalisis.add(comboAnalisis);
+        tabAnalisis.add(Box.createVerticalGlue());
 
-        // Spacer y Reset
-        sidebar.add(Box.createVerticalGlue());
+        JScrollPane scrollAnalisis = new JScrollPane(tabAnalisis);
+        scrollAnalisis.setBorder(null);
+        tabbedPane.addTab("Análisis", new ModernIcon("histograma", 14), scrollAnalisis);
+
+        sidebarWrapper.add(tabbedPane, BorderLayout.CENTER);
+
+        // Panel inferior fijo con botón Restaurar Imagen
+        JPanel bottomPanel = new JPanel(new BorderLayout());
+        bottomPanel.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+
         JButton btnReset = new JButton("Restaurar Imagen");
-        btnReset.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-        btnReset.setAlignmentX(Component.CENTER_ALIGNMENT);
-        btnReset.setBackground(new Color(220, 50, 50));
+        btnReset.setPreferredSize(new Dimension(0, 40));
+        btnReset.setBackground(new Color(239, 68, 68)); // Rojo moderno
         btnReset.setForeground(Color.WHITE);
+        btnReset.setIcon(new ModernIcon("reiniciar", 16, Color.WHITE));
         btnReset.addActionListener(e -> accionReset());
-        sidebar.add(btnReset);
+        bottomPanel.add(btnReset, BorderLayout.CENTER);
 
-        JScrollPane scrollSidebar = new JScrollPane(sidebar);
-        scrollSidebar.setPreferredSize(new Dimension(280, 0));
-        scrollSidebar.setBorder(BorderFactory.createMatteBorder(0, 1, 0, 0, UIManager.getColor("Component.borderColor"))); // Borde sutil adaptable
-        add(scrollSidebar, BorderLayout.EAST); // Movido a la derecha
+        sidebarWrapper.add(bottomPanel, BorderLayout.SOUTH);
+        add(sidebarWrapper, BorderLayout.EAST);
     }
 
     private JPanel crearEncabezado(String titulo, boolean conMargenTop) {
         JPanel panel = new JPanel(new BorderLayout());
         JLabel lbl = new JLabel(titulo);
-        lbl.setFont(lbl.getFont().deriveFont(Font.BOLD, 11f));
+        lbl.setFont(lbl.getFont().deriveFont(Font.BOLD, 10f));
         lbl.setForeground(UIManager.getColor("Label.disabledForeground"));
         panel.add(lbl, BorderLayout.WEST);
         panel.add(new JSeparator(), BorderLayout.SOUTH);
         panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 25));
         panel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        int top = conMargenTop ? 20 : 0;
+        int top = conMargenTop ? 18 : 0;
         panel.setBorder(BorderFactory.createEmptyBorder(top, 0, 8, 0));
         return panel;
     }
@@ -372,6 +392,16 @@ public class MainFrame extends JFrame {
                 setCursor(Cursor.getDefaultCursor());
             });
         }).start();
+    }
+
+    public void setWorkspaceImage(BufferedImage img) {
+        if (img != null) {
+            originalImage = img;
+            filteredImage = img;
+            previewPanel.setImage(filteredImage);
+            scrollMain.setViewportView(previewPanel);
+            notificarHistograma();
+        }
     }
 
     private void accionReset() {
