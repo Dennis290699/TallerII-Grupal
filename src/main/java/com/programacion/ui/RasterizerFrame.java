@@ -74,6 +74,17 @@ public class RasterizerFrame extends JPanel {
     private JCheckBox checkDepthWrite;
     private JCheckBox checkMSAA;
 
+    // Capítulo 9: Operaciones avanzadas (Stencil, Blending, Logic Ops)
+    private JCheckBox checkStencil;
+    private JComboBox<String> comboStencilFunc;
+    private JSlider sliderStencilRef;
+    private JComboBox<String> comboStencilFailOp;
+    private JComboBox<String> comboStencilDepthFailOp;
+    private JComboBox<String> comboStencilPassOp;
+    private JComboBox<String> comboBlendingMode;
+    private JCheckBox checkLogicOp;
+    private JComboBox<String> comboLogicOp;
+
     // Texturas
     private BufferedImage textureCheckerboard;
     private BufferedImage textureUVGrid;
@@ -508,6 +519,89 @@ public class RasterizerFrame extends JPanel {
         sidebarContent.add(checkMSAA);
         sidebarContent.add(Box.createRigidArea(new Dimension(0, 6)));
 
+        // --- SECCIÓN: CAPÍTULO 9 - OPERACIONES AVANZADAS ---
+        sidebarContent.add(crearEncabezado("CAPÍTULO 9: OPERACIONES AVANZADAS", true));
+
+        // -- STENCIL TEST --
+        checkStencil = new JCheckBox("Habilitar Stencil Test", false);
+        checkStencil.addActionListener(e -> pipeline.setStencilEnabled(checkStencil.isSelected()));
+        checkStencil.setAlignmentX(Component.LEFT_ALIGNMENT);
+        sidebarContent.add(checkStencil);
+        sidebarContent.add(Box.createRigidArea(new Dimension(0, 4)));
+
+        comboStencilFunc = new JComboBox<>(new String[]{
+                "Siempre (ALWAYS)", "Nunca (NEVER)", "Menor (LESS)", "Igual (EQUAL)",
+                "Menor/Igual (LEQUAL)", "Mayor (GREATER)", "Diferente (NOTEQUAL)", "Mayor/Igual (GEQUAL)"
+        });
+        comboStencilFunc.setSelectedIndex(0); // ALWAYS por defecto
+        comboStencilFunc.addActionListener(e -> {
+            int idx = comboStencilFunc.getSelectedIndex();
+            pipeline.setStencilFunction(FragmentPipeline.ComparisonFunction.values()[idx]);
+        });
+        sidebarContent.add(crearFilaControl("  Función Stencil:", comboStencilFunc));
+
+        sliderStencilRef = new JSlider(0, 255, 0);
+        sliderStencilRef.addChangeListener(e -> pipeline.setStencilReference(sliderStencilRef.getValue()));
+        sidebarContent.add(crearSliderControl("  Referencia Stencil:", sliderStencilRef));
+
+        String[] stencilOps = {"Mantener (KEEP)", "Cero (ZERO)", "Reemplazar (REPLACE)", "Incrementar (INCR)",
+                               "Incrementar Wrap (INCR_WRAP)", "Decrementar (DECR)", "Decrementar Wrap (DECR_WRAP)", "Invertir (INVERT)"};
+
+        comboStencilFailOp = new JComboBox<>(stencilOps);
+        comboStencilFailOp.setSelectedIndex(0); // KEEP por defecto
+        comboStencilFailOp.addActionListener(e -> {
+            int idx = comboStencilFailOp.getSelectedIndex();
+            pipeline.setStencilFailOp(FragmentPipeline.StencilOp.values()[idx]);
+        });
+        sidebarContent.add(crearFilaControl("  Op Fail (sfail):", comboStencilFailOp));
+
+        comboStencilDepthFailOp = new JComboBox<>(stencilOps);
+        comboStencilDepthFailOp.setSelectedIndex(0); // KEEP por defecto
+        comboStencilDepthFailOp.addActionListener(e -> {
+            int idx = comboStencilDepthFailOp.getSelectedIndex();
+            pipeline.setStencilDepthFailOp(FragmentPipeline.StencilOp.values()[idx]);
+        });
+        sidebarContent.add(crearFilaControl("  Op Z-Fail (dpfail):", comboStencilDepthFailOp));
+
+        comboStencilPassOp = new JComboBox<>(stencilOps);
+        comboStencilPassOp.setSelectedIndex(0); // KEEP por defecto
+        comboStencilPassOp.addActionListener(e -> {
+            int idx = comboStencilPassOp.getSelectedIndex();
+            pipeline.setStencilPassOp(FragmentPipeline.StencilOp.values()[idx]);
+        });
+        sidebarContent.add(crearFilaControl("  Op Z-Pass (dppass):", comboStencilPassOp));
+        sidebarContent.add(Box.createRigidArea(new Dimension(0, 6)));
+
+        // -- BLENDING --
+        comboBlendingMode = new JComboBox<>(new String[]{
+                "Ninguno (NONE)", "Transparencia (ALPHA)", "Aditivo (ADDITIVE)", "Multiplicativo (MULTIPLICATIVE)"
+        });
+        comboBlendingMode.setSelectedIndex(0); // NONE por defecto
+        comboBlendingMode.addActionListener(e -> {
+            int idx = comboBlendingMode.getSelectedIndex();
+            pipeline.setBlendingMode(FragmentPipeline.BlendingMode.values()[idx]);
+        });
+        sidebarContent.add(crearFilaControl("Modo Mezcla:", comboBlendingMode));
+        sidebarContent.add(Box.createRigidArea(new Dimension(0, 6)));
+
+        // -- LOGIC OP --
+        checkLogicOp = new JCheckBox("Habilitar Logic Op", false);
+        checkLogicOp.addActionListener(e -> pipeline.setLogicOpEnabled(checkLogicOp.isSelected()));
+        checkLogicOp.setAlignmentX(Component.LEFT_ALIGNMENT);
+        sidebarContent.add(checkLogicOp);
+        sidebarContent.add(Box.createRigidArea(new Dimension(0, 4)));
+
+        comboLogicOp = new JComboBox<>(new String[]{
+                "CLEAR", "AND", "AND_REVERSE", "COPY", "AND_INVERTED", "NOOP", "XOR", "OR", "NOR", "EQUIV", "INVERT", "OR_REVERSE", "COPY_INVERTED", "OR_INVERTED", "NAND", "SET"
+        });
+        comboLogicOp.setSelectedIndex(3); // COPY por defecto
+        comboLogicOp.addActionListener(e -> {
+            int idx = comboLogicOp.getSelectedIndex();
+            pipeline.setLogicOp(FragmentPipeline.LogicOpMode.values()[idx]);
+        });
+        sidebarContent.add(crearFilaControl("  Op Lógica:", comboLogicOp));
+        sidebarContent.add(Box.createRigidArea(new Dimension(0, 6)));
+
         sidebarContent.add(Box.createVerticalGlue());
 
         JScrollPane scroll = new JScrollPane(sidebarContent);
@@ -607,6 +701,7 @@ public class RasterizerFrame extends JPanel {
         // 1. Limpiar buffers
         rasterizer.clearColorBuffer(bgColor);
         rasterizer.clearZBuffer();
+        rasterizer.clearStencilBuffer((byte) 0);
 
         // 2. Elegir figuras a dibujar
         List<DrawTask> drawTasks = new ArrayList<>();

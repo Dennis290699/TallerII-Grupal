@@ -15,6 +15,7 @@ public class SoftwareRasterizer {
     private int[] pixels;
     private double[] zBuffer;
     private double[] wBuffer;
+    private byte[] stencilBuffer;
     private FragmentConsumer consumer;
     private boolean zBufferEnabled = true;
     private boolean wBufferEnabled = true;
@@ -39,7 +40,9 @@ public class SoftwareRasterizer {
         this.height = height;
         this.pixels = new int[width * height];
         this.zBuffer = new double[width * height];
+        this.stencilBuffer = new byte[width * height];
         clearZBuffer();
+        clearStencilBuffer((byte) 0);
     }
 
     /**
@@ -64,6 +67,9 @@ public class SoftwareRasterizer {
         if (this.wBuffer == null || this.wBuffer.length != width * height) {
             this.wBuffer = new double[width * height];
         }
+        if (this.stencilBuffer == null || this.stencilBuffer.length != width * height) {
+            this.stencilBuffer = new byte[width * height];
+        }
     }
 
     /**
@@ -84,6 +90,15 @@ public class SoftwareRasterizer {
         }
         if (wBuffer != null) {
             Arrays.fill(wBuffer, Double.MAX_VALUE);
+        }
+    }
+
+    /**
+     * Inicializa o limpia el buffer de plantilla (Stencil) con el valor especificado.
+     */
+    public void clearStencilBuffer(byte value) {
+        if (stencilBuffer != null) {
+            Arrays.fill(stencilBuffer, value);
         }
     }
 
@@ -135,6 +150,10 @@ public class SoftwareRasterizer {
 
     public double[] getWBuffer() {
         return wBuffer;
+    }
+
+    public byte[] getStencilBuffer() {
+        return stencilBuffer;
     }
 
     private boolean isMsaaEnabled() {

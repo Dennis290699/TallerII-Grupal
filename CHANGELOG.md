@@ -13,6 +13,11 @@ Aquí puedes ir anotando los cambios que estás haciendo y que aún no has lanza
 - Nueva clase `FragmentPipeline` con pruebas de fragmento secuenciales: Scissor Test, Alpha Test y Depth Test.
 - Suite de pruebas automatizada `FragmentPipelineTest` para verificación aislada de operaciones.
 - Panel de configuración interactivo para el pipeline y representación gráfica del Scissor Box en `RasterizerFrame`.
+- Implementación de la prueba de plantilla (Stencil Test) en `FragmentPipeline` y buffer de stencil en `SoftwareRasterizer`.
+- Mezclado de color avanzado (Blending) con soporte para modos: Transparencia (Alpha), Aditivo y Multiplicativo.
+- Operaciones lógicas booleanas directas (Logic Ops) en el Framebuffer.
+- Sección dedicada en el panel lateral de `RasterizerFrame` para configurar Stencil Test, Blending y Logic Ops de forma interactiva.
+- Suite de pruebas de fragmentos actualizada con verificación automatizada de Stencil, Blending y Logic Ops en `FragmentPipelineTest`.
 
 ### Cambiado (Changed)
 - `SoftwareRasterizer` modificado para procesar fragmentos a través del pipeline e integrar cálculo baricéntrico de cobertura de 2x2 subpíxeles (4x MSAA).
