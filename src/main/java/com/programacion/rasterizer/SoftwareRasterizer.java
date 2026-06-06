@@ -137,6 +137,10 @@ public class SoftwareRasterizer {
         return wBuffer;
     }
 
+    private boolean isMsaaEnabled() {
+        return (consumer instanceof FragmentPipeline) && ((FragmentPipeline) consumer).isMsaaEnabled();
+    }
+
     /**
      * Compara y escribe un fragmento en el framebuffer realizando la prueba de profundidad.
      */
@@ -148,13 +152,24 @@ public class SoftwareRasterizer {
      * Compara y escribe un fragmento en el framebuffer realizando la prueba de profundidad (Z-Buffer o W-Buffer).
      */
     private void writeFragment(int x, int y, double z, double u, double v, double wVal, int color) {
-        if (x < 0 || x >= width || y < 0 || y >= height) return;
+        Fragment frag = new Fragment(x, y, z, u, v, wVal, color);
+        writeFragment(frag);
+    }
 
-        Fragment fragment = new Fragment(x, y, z, u, v, wVal, color);
+    /**
+     * Procesa y escribe un objeto Fragment en el framebuffer respetando el pipeline.
+     */
+    private void writeFragment(Fragment fragment) {
+        int x = fragment.x;
+        int y = fragment.y;
+        if (x < 0 || x >= width || y < 0 || y >= height) return;
 
         // Si hay un pipeline externo configurado (Capítulo 8), emitimos el fragmento.
         if (consumer != null) {
             consumer.consume(fragment);
+            if (consumer instanceof FragmentPipeline) {
+                return;
+            }
         }
 
         // Si el fragmento es descartado por el pipeline, detenemos el proceso de escritura.
@@ -304,15 +319,48 @@ public class SoftwareRasterizer {
         double invDenom = 1.0 / denom;
 
         // Iterar en la caja delimitadora
+        boolean msaa = isMsaaEnabled();
+
         for (int y = minY; y <= maxY; y++) {
             for (int x = minX; x <= maxX; x++) {
-                // Calcular pesos baricéntricos w1, w2, w3
-                double w1 = ((y2 - y3) * (x - x3) + (x3 - x2) * (y - y3)) * invDenom;
-                double w2 = ((y3 - y1) * (x - x3) + (x1 - x3) * (y - y3)) * invDenom;
-                double w3 = 1.0 - w1 - w2;
+                double coverage = 1.0;
+                boolean renderPixel = false;
+
+                if (msaa) {
+                    int coveredCount = 0;
+                    double[] subOffsets = { 0.25, 0.75 };
+                    for (double dy : subOffsets) {
+                        for (double dx : subOffsets) {
+                            double px = x + dx;
+                            double py = y + dy;
+                            double sw1 = ((y2 - y3) * (px - x3) + (x3 - x2) * (py - y3)) * invDenom;
+                            double sw2 = ((y3 - y1) * (px - x3) + (x1 - x3) * (py - y3)) * invDenom;
+                            double sw3 = 1.0 - sw1 - sw2;
+                            if (sw1 >= -1e-9 && sw2 >= -1e-9 && sw3 >= -1e-9) {
+                                coveredCount++;
+                            }
+                        }
+                    }
+                    if (coveredCount > 0) {
+                        renderPixel = true;
+                        coverage = coveredCount / 4.0;
+                    }
+                } else {
+                    double w1 = ((y2 - y3) * (x - x3) + (x3 - x2) * (y - y3)) * invDenom;
+                    double w2 = ((y3 - y1) * (x - x3) + (x1 - x3) * (y - y3)) * invDenom;
+                    double w3 = 1.0 - w1 - w2;
+                    if (w1 >= -1e-9 && w2 >= -1e-9 && w3 >= -1e-9) {
+                        renderPixel = true;
+                    }
+                }
 
                 // Si está dentro (permitiendo un margen infinitesimal para precisión numérica)
-                if (w1 >= -1e-9 && w2 >= -1e-9 && w3 >= -1e-9) {
+                if (renderPixel) {
+                    // Calcular pesos baricéntricos en el centro del píxel para interpolación
+                    double w1 = ((y2 - y3) * (x - x3) + (x3 - x2) * (y - y3)) * invDenom;
+                    double w2 = ((y3 - y1) * (x - x3) + (x1 - x3) * (y - y3)) * invDenom;
+                    double w3 = 1.0 - w1 - w2;
+
                     // Interpolación lineal de Z
                     double z = w1 * z1 + w2 * z2 + w3 * z3;
 
@@ -329,7 +377,9 @@ public class SoftwareRasterizer {
                     b = Math.max(0, Math.min(255, b));
 
                     int interpolatedColor = (a << 24) | (r << 16) | (g << 8) | b;
-                    writeFragment(x, y, z, interpolatedColor);
+                    Fragment frag = new Fragment(x, y, z, interpolatedColor);
+                    frag.coverage = coverage;
+                    writeFragment(frag);
                 }
             }
         }
@@ -534,13 +584,46 @@ public class SoftwareRasterizer {
         double bOverW3 = (c3 & 0xFF) * invW3;
         double aOverW3 = ((c3 >> 24) & 0xFF) * invW3;
 
+        boolean msaa = isMsaaEnabled();
+
         for (int y = minY; y <= maxY; y++) {
             for (int x = minX; x <= maxX; x++) {
-                double w1_bary = ((y2 - y3) * (x - x3) + (x3 - x2) * (y - y3)) * invDenom;
-                double w2_bary = ((y3 - y1) * (x - x3) + (x1 - x3) * (y - y3)) * invDenom;
-                double w3_bary = 1.0 - w1_bary - w2_bary;
+                double coverage = 1.0;
+                boolean renderPixel = false;
 
-                if (w1_bary >= -1e-9 && w2_bary >= -1e-9 && w3_bary >= -1e-9) {
+                if (msaa) {
+                    int coveredCount = 0;
+                    double[] subOffsets = { 0.25, 0.75 };
+                    for (double dy : subOffsets) {
+                        for (double dx : subOffsets) {
+                            double px = x + dx;
+                            double py = y + dy;
+                            double sw1 = ((y2 - y3) * (px - x3) + (x3 - x2) * (py - y3)) * invDenom;
+                            double sw2 = ((y3 - y1) * (px - x3) + (x1 - x3) * (py - y3)) * invDenom;
+                            double sw3 = 1.0 - sw1 - sw2;
+                            if (sw1 >= -1e-9 && sw2 >= -1e-9 && sw3 >= -1e-9) {
+                                coveredCount++;
+                            }
+                        }
+                    }
+                    if (coveredCount > 0) {
+                        renderPixel = true;
+                        coverage = coveredCount / 4.0;
+                    }
+                } else {
+                    double w1_bary = ((y2 - y3) * (x - x3) + (x3 - x2) * (y - y3)) * invDenom;
+                    double w2_bary = ((y3 - y1) * (x - x3) + (x1 - x3) * (y - y3)) * invDenom;
+                    double w3_bary = 1.0 - w1_bary - w2_bary;
+                    if (w1_bary >= -1e-9 && w2_bary >= -1e-9 && w3_bary >= -1e-9) {
+                        renderPixel = true;
+                    }
+                }
+
+                if (renderPixel) {
+                    double w1_bary = ((y2 - y3) * (x - x3) + (x3 - x2) * (y - y3)) * invDenom;
+                    double w2_bary = ((y3 - y1) * (x - x3) + (x1 - x3) * (y - y3)) * invDenom;
+                    double w3_bary = 1.0 - w1_bary - w2_bary;
+
                     double z = w1_bary * z1 + w2_bary * z2 + w3_bary * z3;
                     int finalColor;
                     double u, v, wPixel;
@@ -585,7 +668,9 @@ public class SoftwareRasterizer {
                         finalColor = multiplyColors(texColor, gouraudColor);
                     }
 
-                    writeFragment(x, y, z, u, v, wPixel, finalColor);
+                    Fragment frag = new Fragment(x, y, z, u, v, wPixel, finalColor);
+                    frag.coverage = coverage;
+                    writeFragment(frag);
                 }
             }
         }

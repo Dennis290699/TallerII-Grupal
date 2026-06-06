@@ -13,6 +13,7 @@ public class Fragment {
     public double w;
     public int color;
     public boolean discarded = false;
+    public double coverage = 1.0;
 
     public Fragment(int x, int y, double z, int color) {
         this.x = x;

@@ -3,6 +3,7 @@ package com.programacion.ui;
 import com.programacion.rasterizer.Fragment;
 import com.programacion.rasterizer.FragmentConsumer;
 import com.programacion.rasterizer.SoftwareRasterizer;
+import com.programacion.rasterizer.FragmentPipeline;
 
 import javax.swing.*;
 import java.awt.*;
@@ -61,6 +62,18 @@ public class RasterizerFrame extends JPanel {
     private JCheckBox checkZBuffer;
     private JButton btnPlayPause;
 
+    // Capítulo 8: Pipeline y fragmentos
+    private final FragmentPipeline pipeline;
+    private JCheckBox checkPipeline;
+    private JCheckBox checkScissor;
+    private JSlider sliderScissorX, sliderScissorY, sliderScissorW, sliderScissorH;
+    private JCheckBox checkAlphaTest;
+    private JComboBox<String> comboAlphaFunc;
+    private JSlider sliderAlphaRef;
+    private JComboBox<String> comboDepthFunc;
+    private JCheckBox checkDepthWrite;
+    private JCheckBox checkMSAA;
+
     // Texturas
     private BufferedImage textureCheckerboard;
     private BufferedImage textureUVGrid;
@@ -69,6 +82,8 @@ public class RasterizerFrame extends JPanel {
     public RasterizerFrame(MainFrame parentFrame, boolean isDarkMode) {
         this.parentFrame = parentFrame;
         this.rasterizer = new SoftwareRasterizer();
+        this.pipeline = new FragmentPipeline(rasterizer);
+        this.rasterizer.setFragmentConsumer(pipeline); // Habilitar por defecto
 
         setLayout(new BorderLayout());
 
@@ -394,6 +409,105 @@ public class RasterizerFrame extends JPanel {
         });
         sidebarContent.add(crearFilaControl("Líneas/Puntos:", comboLineColor));
 
+        // --- SECCIÓN: CAPÍTULO 8 - PIPELINE Y FRAGMENTOS ---
+        sidebarContent.add(crearEncabezado("CAPÍTULO 8: PIPELINE Y FRAGMENTOS", true));
+
+        checkPipeline = new JCheckBox("Activar Pipeline de Fragmentos", true);
+        checkPipeline.addActionListener(e -> {
+            boolean active = checkPipeline.isSelected();
+            rasterizer.setFragmentConsumer(active ? pipeline : null);
+        });
+        checkPipeline.setAlignmentX(Component.LEFT_ALIGNMENT);
+        sidebarContent.add(checkPipeline);
+        sidebarContent.add(Box.createRigidArea(new Dimension(0, 6)));
+
+        // -- SCISSOR TEST --
+        checkScissor = new JCheckBox("Habilitar Scissor Test", false);
+        checkScissor.addActionListener(e -> {
+            pipeline.setScissorEnabled(checkScissor.isSelected());
+            canvasPanel.repaint();
+        });
+        checkScissor.setAlignmentX(Component.LEFT_ALIGNMENT);
+        sidebarContent.add(checkScissor);
+        sidebarContent.add(Box.createRigidArea(new Dimension(0, 4)));
+
+        sliderScissorX = new JSlider(0, 800, 0);
+        sliderScissorX.addChangeListener(e -> {
+            pipeline.setScissorX(sliderScissorX.getValue());
+            canvasPanel.repaint();
+        });
+        sidebarContent.add(crearSliderControl("  Scissor X:", sliderScissorX));
+
+        sliderScissorY = new JSlider(0, 600, 0);
+        sliderScissorY.addChangeListener(e -> {
+            pipeline.setScissorY(sliderScissorY.getValue());
+            canvasPanel.repaint();
+        });
+        sidebarContent.add(crearSliderControl("  Scissor Y:", sliderScissorY));
+
+        sliderScissorW = new JSlider(1, 800, 100);
+        sliderScissorW.addChangeListener(e -> {
+            pipeline.setScissorWidth(sliderScissorW.getValue());
+            canvasPanel.repaint();
+        });
+        sidebarContent.add(crearSliderControl("  Scissor Ancho:", sliderScissorW));
+
+        sliderScissorH = new JSlider(1, 600, 100);
+        sliderScissorH.addChangeListener(e -> {
+            pipeline.setScissorHeight(sliderScissorH.getValue());
+            canvasPanel.repaint();
+        });
+        sidebarContent.add(crearSliderControl("  Scissor Alto:", sliderScissorH));
+        sidebarContent.add(Box.createRigidArea(new Dimension(0, 6)));
+
+        // -- ALPHA TEST --
+        checkAlphaTest = new JCheckBox("Habilitar Alpha Test", false);
+        checkAlphaTest.addActionListener(e -> pipeline.setAlphaTestEnabled(checkAlphaTest.isSelected()));
+        checkAlphaTest.setAlignmentX(Component.LEFT_ALIGNMENT);
+        sidebarContent.add(checkAlphaTest);
+        sidebarContent.add(Box.createRigidArea(new Dimension(0, 4)));
+
+        comboAlphaFunc = new JComboBox<>(new String[]{
+                "Siempre (ALWAYS)", "Nunca (NEVER)", "Menor (LESS)", "Igual (EQUAL)",
+                "Menor/Igual (LEQUAL)", "Mayor (GREATER)", "Diferente (NOTEQUAL)", "Mayor/Igual (GEQUAL)"
+        });
+        comboAlphaFunc.setSelectedIndex(5); // GREATER por defecto
+        comboAlphaFunc.addActionListener(e -> {
+            int idx = comboAlphaFunc.getSelectedIndex();
+            pipeline.setAlphaFunction(FragmentPipeline.ComparisonFunction.values()[idx]);
+        });
+        sidebarContent.add(crearFilaControl("  Función Alpha:", comboAlphaFunc));
+
+        sliderAlphaRef = new JSlider(0, 255, 128);
+        sliderAlphaRef.addChangeListener(e -> pipeline.setAlphaReference(sliderAlphaRef.getValue()));
+        sidebarContent.add(crearSliderControl("  Referencia Alpha:", sliderAlphaRef));
+        sidebarContent.add(Box.createRigidArea(new Dimension(0, 6)));
+
+        // -- DEPTH TEST --
+        comboDepthFunc = new JComboBox<>(new String[]{
+                "Siempre (ALWAYS)", "Nunca (NEVER)", "Menor (LESS)", "Igual (EQUAL)",
+                "Menor/Igual (LEQUAL)", "Mayor (GREATER)", "Diferente (NOTEQUAL)", "Mayor/Igual (GEQUAL)"
+        });
+        comboDepthFunc.setSelectedIndex(2); // LESS por defecto
+        comboDepthFunc.addActionListener(e -> {
+            int idx = comboDepthFunc.getSelectedIndex();
+            pipeline.setDepthFunction(FragmentPipeline.ComparisonFunction.values()[idx]);
+        });
+        sidebarContent.add(crearFilaControl("  Función Depth:", comboDepthFunc));
+
+        checkDepthWrite = new JCheckBox("Habilitar Escritura Profundidad", true);
+        checkDepthWrite.addActionListener(e -> pipeline.setDepthWriteEnabled(checkDepthWrite.isSelected()));
+        checkDepthWrite.setAlignmentX(Component.LEFT_ALIGNMENT);
+        sidebarContent.add(checkDepthWrite);
+        sidebarContent.add(Box.createRigidArea(new Dimension(0, 6)));
+
+        // -- MSAA --
+        checkMSAA = new JCheckBox("Habilitar 4x MSAA (Multisample)", false);
+        checkMSAA.addActionListener(e -> pipeline.setMsaaEnabled(checkMSAA.isSelected()));
+        checkMSAA.setAlignmentX(Component.LEFT_ALIGNMENT);
+        sidebarContent.add(checkMSAA);
+        sidebarContent.add(Box.createRigidArea(new Dimension(0, 6)));
+
         sidebarContent.add(Box.createVerticalGlue());
 
         JScrollPane scroll = new JScrollPane(sidebarContent);
@@ -455,6 +569,33 @@ public class RasterizerFrame extends JPanel {
 
         renderImage = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
         rasterizer.bindTarget(renderImage);
+
+        // Actualizar límites de Scissor
+        if (sliderScissorX != null) {
+            sliderScissorX.setMaximum(w);
+            sliderScissorY.setMaximum(h);
+            sliderScissorW.setMaximum(w);
+            sliderScissorH.setMaximum(h);
+
+            // Valores iniciales centrados por defecto
+            if (pipeline.getScissorWidth() == 100 && pipeline.getScissorHeight() == 100 &&
+                pipeline.getScissorX() == 0 && pipeline.getScissorY() == 0) {
+                int defaultW = w / 2;
+                int defaultH = h / 2;
+                int defaultX = w / 4;
+                int defaultY = h / 4;
+
+                sliderScissorX.setValue(defaultX);
+                sliderScissorY.setValue(defaultY);
+                sliderScissorW.setValue(defaultW);
+                sliderScissorH.setValue(defaultH);
+
+                pipeline.setScissorX(defaultX);
+                pipeline.setScissorY(defaultY);
+                pipeline.setScissorWidth(defaultW);
+                pipeline.setScissorHeight(defaultH);
+            }
+        }
     }
 
     private synchronized void renderFrame() {
@@ -850,6 +991,18 @@ public class RasterizerFrame extends JPanel {
                 int dx = (getWidth() - renderImage.getWidth()) / 2;
                 int dy = (getHeight() - renderImage.getHeight()) / 2;
                 g.drawImage(renderImage, dx, dy, null);
+
+                // Dibujar el cuadro del Scissor si está activo
+                if (pipeline != null && pipeline.isScissorEnabled() && checkPipeline != null && checkPipeline.isSelected()) {
+                    Graphics2D g2d = (Graphics2D) g.create();
+                    g2d.setColor(new Color(239, 68, 68)); // Rojo acentuado
+                    Stroke dashed = new BasicStroke(2, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{9}, 0);
+                    g2d.setStroke(dashed);
+                    g2d.drawRect(dx + pipeline.getScissorX(), dy + pipeline.getScissorY(), pipeline.getScissorWidth(), pipeline.getScissorHeight());
+                    g2d.setFont(new Font("SansSerif", Font.BOLD, 10));
+                    g2d.drawString("SCISSOR BOX", dx + pipeline.getScissorX() + 5, dy + pipeline.getScissorY() + 15);
+                    g2d.dispose();
+                }
             }
         }
     }

@@ -9,6 +9,14 @@ y este proyecto se adhiere a [Versionado Semántico](https://semver.org/lang/es/
 
 Aquí puedes ir anotando los cambios que estás haciendo y que aún no has lanzado en una nueva versión.
 
+### Añadido (Added)
+- Nueva clase `FragmentPipeline` con pruebas de fragmento secuenciales: Scissor Test, Alpha Test y Depth Test.
+- Suite de pruebas automatizada `FragmentPipelineTest` para verificación aislada de operaciones.
+- Panel de configuración interactivo para el pipeline y representación gráfica del Scissor Box en `RasterizerFrame`.
+
+### Cambiado (Changed)
+- `SoftwareRasterizer` modificado para procesar fragmentos a través del pipeline e integrar cálculo baricéntrico de cobertura de 2x2 subpíxeles (4x MSAA).
+
 ---
 
 ## [1.0.6] - 2026-05-28
