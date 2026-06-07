@@ -4,6 +4,7 @@ import com.programacion.rasterizer.Fragment;
 import com.programacion.rasterizer.FragmentConsumer;
 import com.programacion.rasterizer.SoftwareRasterizer;
 import com.programacion.rasterizer.FragmentPipeline;
+import com.programacion.rasterizer.AccumulationBuffer;
 
 import javax.swing.*;
 import java.awt.*;
@@ -45,6 +46,19 @@ public class RasterizerFrame extends JPanel {
     private ShadingMode activeShadingMode = ShadingMode.GOURAUD;
     private LineAlgo activeLineAlgo = LineAlgo.BRESENHAM;
     private int bgColor = 0xFF121214; // Gris oscuro
+
+    // Capítulo 10: Buffer de Acumulación
+    private enum AccumMode { NONE, MOTION_BLUR_TEMPORAL, MOTION_BLUR_OFFLINE, DEPTH_OF_FIELD, FSAA }
+    private AccumMode activeAccumMode = AccumMode.NONE;
+    private final AccumulationBuffer accumBuffer = new AccumulationBuffer();
+    private int accumPasses = 8;
+    private float temporalBlurFeedback = 0.85f;
+    private double focalDistance = 4.0;
+    private double apertureSize = 0.08;
+    private double jitterX = 0.0;
+    private double jitterY = 0.0;
+    private double lensJitterX = 0.0;
+    private double lensJitterY = 0.0;
     private int meshLineColor = 0xFF6366F1; // Índigo
 
     // Estructuras 3D
@@ -602,6 +616,74 @@ public class RasterizerFrame extends JPanel {
         sidebarContent.add(crearFilaControl("  Op Lógica:", comboLogicOp));
         sidebarContent.add(Box.createRigidArea(new Dimension(0, 6)));
 
+        // --- SECCIÓN: CAPÍTULO 10 - BUFFER DE ACUMULACIÓN ---
+        sidebarContent.add(crearEncabezado("CAPÍTULO 10: BUFFER DE ACUMULACIÓN", true));
+
+        JComboBox<String> comboAccumMode = new JComboBox<>(new String[]{
+                "Ninguno (NONE)", "Motion Blur Temporal", "Motion Blur Offline", "Profundidad de Campo", "Antialiasing (FSAA)"
+        });
+        comboAccumMode.setSelectedIndex(0);
+
+        JSlider sliderAccumPasses = new JSlider(2, 32, 8);
+        JSlider sliderTemporalFeedback = new JSlider(50, 99, 85);
+        JSlider sliderFocalDist = new JSlider(15, 80, 40);
+        JSlider sliderAperture = new JSlider(1, 30, 8);
+
+        JPanel panelPasses = crearSliderControl("  Pasos Acumulación (8):", sliderAccumPasses);
+        JPanel panelFeedback = crearSliderControl("  Feedback Blur (0.85):", sliderTemporalFeedback);
+        JPanel panelFocal = crearSliderControl("  Distancia Focal (4.0):", sliderFocalDist);
+        JPanel panelAperture = crearSliderControl("  Apertura Lente (0.08):", sliderAperture);
+
+        comboAccumMode.addActionListener(e -> {
+            int idx = comboAccumMode.getSelectedIndex();
+            activeAccumMode = AccumMode.values()[idx];
+
+            panelPasses.setVisible(activeAccumMode == AccumMode.FSAA || activeAccumMode == AccumMode.DEPTH_OF_FIELD || activeAccumMode == AccumMode.MOTION_BLUR_OFFLINE);
+            panelFeedback.setVisible(activeAccumMode == AccumMode.MOTION_BLUR_TEMPORAL);
+            panelFocal.setVisible(activeAccumMode == AccumMode.DEPTH_OF_FIELD);
+            panelAperture.setVisible(activeAccumMode == AccumMode.DEPTH_OF_FIELD);
+
+            accumBuffer.clear();
+            sidebarContent.revalidate();
+            sidebarContent.repaint();
+        });
+        sidebarContent.add(crearFilaControl("Modo Acumulación:", comboAccumMode));
+        sidebarContent.add(Box.createRigidArea(new Dimension(0, 6)));
+
+        sliderAccumPasses.addChangeListener(e -> {
+            accumPasses = sliderAccumPasses.getValue();
+            JLabel lbl = (JLabel) panelPasses.getComponent(0);
+            lbl.setText("  Pasos Acumulación (" + accumPasses + "):");
+        });
+        sidebarContent.add(panelPasses);
+        panelPasses.setVisible(false);
+
+        sliderTemporalFeedback.addChangeListener(e -> {
+            temporalBlurFeedback = sliderTemporalFeedback.getValue() / 100.0f;
+            JLabel lbl = (JLabel) panelFeedback.getComponent(0);
+            lbl.setText("  Feedback Blur (" + String.format("%.2f", temporalBlurFeedback) + "):");
+        });
+        sidebarContent.add(panelFeedback);
+        panelFeedback.setVisible(false);
+
+        sliderFocalDist.addChangeListener(e -> {
+            focalDistance = sliderFocalDist.getValue() / 10.0;
+            JLabel lbl = (JLabel) panelFocal.getComponent(0);
+            lbl.setText("  Distancia Focal (" + String.format("%.1f", focalDistance) + "):");
+        });
+        sidebarContent.add(panelFocal);
+        panelFocal.setVisible(false);
+
+        sliderAperture.addChangeListener(e -> {
+            apertureSize = sliderAperture.getValue() / 100.0;
+            JLabel lbl = (JLabel) panelAperture.getComponent(0);
+            lbl.setText("  Apertura Lente (" + String.format("%.2f", apertureSize) + "):");
+        });
+        sidebarContent.add(panelAperture);
+        panelAperture.setVisible(false);
+
+        sidebarContent.add(Box.createRigidArea(new Dimension(0, 6)));
+
         sidebarContent.add(Box.createVerticalGlue());
 
         JScrollPane scroll = new JScrollPane(sidebarContent);
@@ -698,65 +780,67 @@ public class RasterizerFrame extends JPanel {
         int w = renderImage.getWidth();
         int h = renderImage.getHeight();
 
-        // 1. Limpiar buffers
-        rasterizer.clearColorBuffer(bgColor);
-        rasterizer.clearZBuffer();
-        rasterizer.clearStencilBuffer((byte) 0);
+        if (activeAccumMode == AccumMode.NONE) {
+            rasterizer.clearColorBuffer(bgColor);
+            rasterizer.clearZBuffer();
+            rasterizer.clearStencilBuffer((byte) 0);
+            renderSceneData();
+        } else if (activeAccumMode == AccumMode.MOTION_BLUR_TEMPORAL) {
+            rasterizer.clearColorBuffer(bgColor);
+            rasterizer.clearZBuffer();
+            rasterizer.clearStencilBuffer((byte) 0);
+            renderSceneData();
 
-        // 2. Elegir figuras a dibujar
-        List<DrawTask> drawTasks = new ArrayList<>();
-        switch (activeShape) {
-            case CUBE -> addShapeTasks(cubeVertices, cubeFaces, drawTasks, 0, 0, 0);
-            case PYRAMID -> addShapeTasks(pyramidVertices, pyramidFaces, drawTasks, 0, 0, 0);
-            case SPHERE -> addShapeTasks(sphereVertices, sphereFaces, drawTasks, 0, 0, 0);
-            case COMBINED -> {
-                // Dibujar las tres figuras espaciadas
-                addShapeTasks(cubeVertices, cubeFaces, drawTasks, -1.8, 0, 0);
-                addShapeTasks(pyramidVertices, pyramidFaces, drawTasks, 0, 0, 0);
-                addShapeTasks(sphereVertices, sphereFaces, drawTasks, 1.8, 0, 0);
-            }
-        }
+            accumBuffer.resize(w, h);
+            accumBuffer.scaleAccumulation(temporalBlurFeedback);
+            accumBuffer.accumulate(renderImage, 1.0f - temporalBlurFeedback);
+            accumBuffer.returnFrame(renderImage, 1.0f);
+        } else {
+            // Modos Offline de Pasadas Múltiples (FSAA, DoF, Motion Blur Offline)
+            int passes = accumPasses;
+            accumBuffer.resize(w, h);
+            accumBuffer.clear();
 
-        // 3. Renderizar cada tarea usando el rasterizador
-        for (DrawTask task : drawTasks) {
-            int x1 = task.screenX[0], y1 = task.screenY[0];
-            int x2 = task.screenX[1], y2 = task.screenY[1];
-            int x3 = task.screenX[2], y3 = task.screenY[2];
-            double z1 = task.projZ[0], z2 = task.projZ[1], z3 = task.projZ[2];
+            double baseRotX = rotX;
+            double baseRotY = rotY;
+            double baseRotZ = rotZ;
 
-            if (activeRenderMode == RenderMode.SOLID_SHADED || activeRenderMode == RenderMode.Z_BUFFER_MAP) {
-                BufferedImage activeTexture = getActiveTextureImage();
-                if (activeTexture != null) {
-                    rasterizer.drawTriangleTextured(
-                            x1, y1, z1, z1, task.face.uCoords[0], task.face.vCoords[0],
-                            x2, y2, z2, z2, task.face.uCoords[1], task.face.vCoords[1],
-                            x3, y3, z3, z3, task.face.uCoords[2], task.face.vCoords[2],
-                            activeTexture,
-                            task.c1, task.c2, task.c3
-                    );
-                } else {
-                    rasterizer.drawTriangle(x1, y1, z1, x2, y2, z2, x3, y3, z3, task.c1, task.c2, task.c3);
+            float weight = 1.0f / passes;
+
+            for (int p = 0; p < passes; p++) {
+                jitterX = 0.0;
+                jitterY = 0.0;
+                lensJitterX = 0.0;
+                lensJitterY = 0.0;
+
+                if (activeAccumMode == AccumMode.FSAA) {
+                    setFsaaJitter(p, passes);
+                } else if (activeAccumMode == AccumMode.DEPTH_OF_FIELD) {
+                    setDofJitter(p, passes);
+                } else if (activeAccumMode == AccumMode.MOTION_BLUR_OFFLINE) {
+                    rotX = baseRotX - speedX + (speedX * (double) p / passes);
+                    rotY = baseRotY - speedY + (speedY * (double) p / passes);
+                    rotZ = baseRotZ - speedZ + (speedZ * (double) p / passes);
                 }
-            } else if (activeRenderMode == RenderMode.WIREFRAME) {
-                if (activeLineAlgo == LineAlgo.BRESENHAM) {
-                    rasterizer.drawLineBresenham(x1, y1, z1, x2, y2, z2, meshLineColor);
-                    rasterizer.drawLineBresenham(x2, y2, z2, x3, y3, z3, meshLineColor);
-                    rasterizer.drawLineBresenham(x3, y3, z3, x1, y1, z1, meshLineColor);
-                } else {
-                    rasterizer.drawLineDDA(x1, y1, z1, x2, y2, z2, meshLineColor);
-                    rasterizer.drawLineDDA(x2, y2, z2, x3, y3, z3, meshLineColor);
-                    rasterizer.drawLineDDA(x3, y3, z3, x1, y1, z1, meshLineColor);
-                }
-            } else if (activeRenderMode == RenderMode.POINTS) {
-                rasterizer.drawPoint(x1, y1, z1, meshLineColor);
-                rasterizer.drawPoint(x2, y2, z2, meshLineColor);
-                rasterizer.drawPoint(x3, y3, z3, meshLineColor);
-            }
-        }
 
-        // 4. Si el modo de renderizado es mapa Z, dibujamos el Z-Buffer como escala de grises
-        if (activeRenderMode == RenderMode.Z_BUFFER_MAP) {
-            rasterizer.drawZBufferToColorBuffer();
+                rasterizer.clearColorBuffer(bgColor);
+                rasterizer.clearZBuffer();
+                rasterizer.clearStencilBuffer((byte) 0);
+                renderSceneData();
+
+                accumBuffer.accumulate(renderImage, weight);
+            }
+
+            // Restaurar estados originales
+            rotX = baseRotX;
+            rotY = baseRotY;
+            rotZ = baseRotZ;
+            jitterX = 0.0;
+            jitterY = 0.0;
+            lensJitterX = 0.0;
+            lensJitterY = 0.0;
+
+            accumBuffer.returnFrame(renderImage, 1.0f);
         }
 
         canvasPanel.repaint();
@@ -808,8 +892,15 @@ public class RasterizerFrame extends JPanel {
 
             if (depth <= 0.1) depth = 0.1; // Clipping mínimo
 
-            screenX[i] = (int) (r.x * fov / depth + w / 2.0);
-            screenY[i] = (int) (-r.y * fov / depth + h / 2.0); // Invertir Y en pantalla
+            if (activeAccumMode == AccumMode.DEPTH_OF_FIELD) {
+                double dx = lensJitterX;
+                double dy = lensJitterY;
+                screenX[i] = (int) (((r.x - dx) * fov / depth) + (w / 2.0) + (dx * fov / focalDistance) + jitterX);
+                screenY[i] = (int) (((-r.y - dy) * fov / depth) + (h / 2.0) - (dy * fov / focalDistance) + jitterY);
+            } else {
+                screenX[i] = (int) (r.x * fov / depth + w / 2.0 + jitterX);
+                screenY[i] = (int) (-r.y * fov / depth + h / 2.0 + jitterY);
+            }
             projZ[i] = depth;
         }
 
@@ -1099,6 +1190,74 @@ public class RasterizerFrame extends JPanel {
                     g2d.dispose();
                 }
             }
+        }
+    }
+
+    private void setFsaaJitter(int pass, int totalPasses) {
+        double theta = pass * 2.399963229728653; // Ángulo áureo
+        double r = Math.sqrt(pass) / Math.sqrt(totalPasses);
+        jitterX = r * Math.cos(theta) * 0.5;
+        jitterY = r * Math.sin(theta) * 0.5;
+    }
+
+    private void setDofJitter(int pass, int totalPasses) {
+        double theta = pass * 2.399963229728653; // Ángulo áureo
+        double r = (Math.sqrt(pass) / Math.sqrt(totalPasses)) * apertureSize;
+        lensJitterX = r * Math.cos(theta);
+        lensJitterY = r * Math.sin(theta);
+    }
+
+    private void renderSceneData() {
+        List<DrawTask> drawTasks = new ArrayList<>();
+        switch (activeShape) {
+            case CUBE -> addShapeTasks(cubeVertices, cubeFaces, drawTasks, 0, 0, 0);
+            case PYRAMID -> addShapeTasks(pyramidVertices, pyramidFaces, drawTasks, 0, 0, 0);
+            case SPHERE -> addShapeTasks(sphereVertices, sphereFaces, drawTasks, 0, 0, 0);
+            case COMBINED -> {
+                addShapeTasks(cubeVertices, cubeFaces, drawTasks, -1.8, 0, 0);
+                addShapeTasks(pyramidVertices, pyramidFaces, drawTasks, 0, 0, 0);
+                addShapeTasks(sphereVertices, sphereFaces, drawTasks, 1.8, 0, 0);
+            }
+        }
+
+        for (DrawTask task : drawTasks) {
+            int x1 = task.screenX[0], y1 = task.screenY[0];
+            int x2 = task.screenX[1], y2 = task.screenY[1];
+            int x3 = task.screenX[2], y3 = task.screenY[2];
+            double z1 = task.projZ[0], z2 = task.projZ[1], z3 = task.projZ[2];
+
+            if (activeRenderMode == RenderMode.SOLID_SHADED || activeRenderMode == RenderMode.Z_BUFFER_MAP) {
+                BufferedImage activeTexture = getActiveTextureImage();
+                if (activeTexture != null) {
+                    rasterizer.drawTriangleTextured(
+                            x1, y1, z1, z1, task.face.uCoords[0], task.face.vCoords[0],
+                            x2, y2, z2, z2, task.face.uCoords[1], task.face.vCoords[1],
+                            x3, y3, z3, z3, task.face.uCoords[2], task.face.vCoords[2],
+                            activeTexture,
+                            task.c1, task.c2, task.c3
+                    );
+                } else {
+                    rasterizer.drawTriangle(x1, y1, z1, x2, y2, z2, x3, y3, z3, task.c1, task.c2, task.c3);
+                }
+            } else if (activeRenderMode == RenderMode.WIREFRAME) {
+                if (activeLineAlgo == LineAlgo.BRESENHAM) {
+                    rasterizer.drawLineBresenham(x1, y1, z1, x2, y2, z2, meshLineColor);
+                    rasterizer.drawLineBresenham(x2, y2, z2, x3, y3, z3, meshLineColor);
+                    rasterizer.drawLineBresenham(x3, y3, z3, x1, y1, z1, meshLineColor);
+                } else {
+                    rasterizer.drawLineDDA(x1, y1, z1, x2, y2, z2, meshLineColor);
+                    rasterizer.drawLineDDA(x2, y2, z2, x3, y3, z3, meshLineColor);
+                    rasterizer.drawLineDDA(x3, y3, z3, x1, y1, z1, meshLineColor);
+                }
+            } else if (activeRenderMode == RenderMode.POINTS) {
+                rasterizer.drawPoint(x1, y1, z1, meshLineColor);
+                rasterizer.drawPoint(x2, y2, z2, meshLineColor);
+                rasterizer.drawPoint(x3, y3, z3, meshLineColor);
+            }
+        }
+
+        if (activeRenderMode == RenderMode.Z_BUFFER_MAP) {
+            rasterizer.drawZBufferToColorBuffer();
         }
     }
 
