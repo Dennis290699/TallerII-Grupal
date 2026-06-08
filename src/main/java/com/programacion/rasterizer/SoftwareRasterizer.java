@@ -222,10 +222,15 @@ public class SoftwareRasterizer {
     }
 
     /**
-     * Dibuja un punto (Píxel individual) en las coordenadas y profundidad indicadas.
+     * Dibuja un punto (vértice) en las coordenadas y profundidad indicadas.
+     * Dibuja un bloque de 3x3 píxeles para mejorar la visibilidad de los vértices.
      */
     public void drawPoint(int x, int y, double z, int color) {
-        writeFragment(x, y, z, color);
+        for (int dy = -1; dy <= 1; dy++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                writeFragment(x + dx, y + dy, z, color);
+            }
+        }
     }
 
     /**
