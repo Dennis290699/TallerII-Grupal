@@ -9,7 +9,13 @@ y este proyecto se adhiere a [Versionado Semántico](https://semver.org/lang/es/
 
 Aquí puedes ir anotando los cambios que estás haciendo y que aún no has lanzado en una nueva versión.
 
+---
+
+## [1.0.7] - 2026-06-08
+
 ### Añadido (Added)
+- Rasterizador 3D por software con `SoftwareRasterizer`, Z-Buffer y visualizador dedicado.
+- Mapeado de texturas, interpolación bilineal y corrección de perspectiva mediante W-Buffering.
 - Nueva clase `FragmentPipeline` con pruebas de fragmento secuenciales: Scissor Test, Alpha Test y Depth Test.
 - Suite de pruebas automatizada `FragmentPipelineTest` para verificación aislada de operaciones.
 - Panel de configuración interactivo para el pipeline y representación gráfica del Scissor Box en `RasterizerFrame`.
@@ -18,9 +24,17 @@ Aquí puedes ir anotando los cambios que estás haciendo y que aún no has lanza
 - Operaciones lógicas booleanas directas (Logic Ops) en el Framebuffer.
 - Sección dedicada en el panel lateral de `RasterizerFrame` para configurar Stencil Test, Blending y Logic Ops de forma interactiva.
 - Suite de pruebas de fragmentos actualizada con verificación automatizada de Stencil, Blending y Logic Ops en `FragmentPipelineTest`.
+- Buffer de acumulación y efectos temporales para el rasterizador.
+- Documentación técnica unificada en `README.md`.
 
 ### Cambiado (Changed)
+- Versión del proyecto actualizada a `1.0.7`.
 - `SoftwareRasterizer` modificado para procesar fragmentos a través del pipeline e integrar cálculo baricéntrico de cobertura de 2x2 subpíxeles (4x MSAA).
+- Panel 3D reorganizado para mejorar la navegación de controles y la experiencia de uso.
+- Backface culling y visibilidad de vértices corregidos para el flujo de rasterizado.
+
+### Corregido (Fixed)
+- Inicialización de `w` en fragmentos del rasterizador.
 
 ---
 
