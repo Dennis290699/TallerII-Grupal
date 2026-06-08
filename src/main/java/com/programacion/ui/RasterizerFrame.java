@@ -171,8 +171,8 @@ public class RasterizerFrame extends JPanel {
                 new Face3D(new int[]{3, 6, 2}, new double[]{0.0, 1.0, 1.0}, new double[]{0.0, 1.0, 0.0}, 0xFF007AFF),
                 new Face3D(new int[]{3, 7, 6}, new double[]{0.0, 0.0, 1.0}, new double[]{0.0, 1.0, 1.0}, 0xFF007AFF),
                 // Inferior (y = -0.8)
-                new Face3D(new int[]{4, 1, 0}, new double[]{0.0, 1.0, 1.0}, new double[]{0.0, 1.0, 0.0}, 0xFFFFCC00),
-                new Face3D(new int[]{4, 5, 1}, new double[]{0.0, 0.0, 1.0}, new double[]{0.0, 1.0, 1.0}, 0xFFFFCC00),
+                new Face3D(new int[]{4, 0, 1}, new double[]{0.0, 1.0, 1.0}, new double[]{0.0, 0.0, 1.0}, 0xFFFFCC00),
+                new Face3D(new int[]{4, 1, 5}, new double[]{0.0, 1.0, 0.0}, new double[]{0.0, 1.0, 1.0}, 0xFFFFCC00),
                 // Derecha (x = 0.8)
                 new Face3D(new int[]{1, 6, 5}, new double[]{0.0, 1.0, 1.0}, new double[]{0.0, 1.0, 0.0}, 0xFFAF52DE),
                 new Face3D(new int[]{1, 2, 6}, new double[]{0.0, 0.0, 1.0}, new double[]{0.0, 1.0, 1.0}, 0xFFAF52DE),
@@ -244,19 +244,19 @@ public class RasterizerFrame extends JPanel {
                 double v0 = (double) r / rings;
                 double v1 = (double) (r + 1) / rings;
 
-                // Triángulo 1: first, second, first + 1
+                // Triángulo 1: first, first + 1, second
                 faces.add(new Face3D(
-                        new int[]{first, second, first + 1},
-                        new double[]{u0, u0, u1},
-                        new double[]{v0, v1, v0},
+                        new int[]{first, first + 1, second},
+                        new double[]{u0, u1, u0},
+                        new double[]{v0, v0, v1},
                         0xFF5AC8FA
                 ));
 
-                // Triángulo 2: second, second + 1, first + 1
+                // Triángulo 2: second, first + 1, second + 1
                 faces.add(new Face3D(
-                        new int[]{second, second + 1, first + 1},
+                        new int[]{second, first + 1, second + 1},
                         new double[]{u0, u1, u1},
-                        new double[]{v1, v1, v0},
+                        new double[]{v1, v0, v1},
                         0xFF5AC8FA
                 ));
             }
@@ -300,8 +300,8 @@ public class RasterizerFrame extends JPanel {
         sidebarContent.setLayout(new BoxLayout(sidebarContent, BoxLayout.Y_AXIS));
         sidebarContent.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
 
-        // --- SECCIÓN 1: CONFIGURACIÓN DE FIGURA ---
-        sidebarContent.add(crearEncabezado("CONFIGURACIÓN DE FIGURA", false));
+        // --- SECCIÓN 1: ESCENA Y GEOMETRÍA ---
+        sidebarContent.add(crearEncabezado("ESCENA Y GEOMETRÍA", false));
 
         comboFiguras = new JComboBox<>(new String[]{"Cubo", "Pirámide", "Esfera", "Todos Juntos"});
         comboFiguras.addActionListener(e -> {
@@ -326,25 +326,6 @@ public class RasterizerFrame extends JPanel {
         });
         sidebarContent.add(crearFilaControl("Iluminación:", comboSombreado));
 
-        // --- SECCIÓN 2: CONFIGURACIÓN DEL MOTOR ---
-        sidebarContent.add(crearEncabezado("CONFIGURACIÓN DEL MOTOR", true));
-
-        checkZBuffer = new JCheckBox("Habilitar Prueba Z-Buffer", true);
-        checkZBuffer.addActionListener(e -> rasterizer.setZBufferEnabled(checkZBuffer.isSelected()));
-        checkZBuffer.setAlignmentX(Component.LEFT_ALIGNMENT);
-        sidebarContent.add(checkZBuffer);
-        sidebarContent.add(Box.createRigidArea(new Dimension(0, 8)));
-
-        comboLineaAlgo = new JComboBox<>(new String[]{"Bresenham", "DDA"});
-        comboLineaAlgo.addActionListener(e -> {
-            int idx = comboLineaAlgo.getSelectedIndex();
-            activeLineAlgo = LineAlgo.values()[idx];
-        });
-        sidebarContent.add(crearFilaControl("Algoritmo Líneas:", comboLineaAlgo));
-
-        // --- SECCIÓN: TEXTURAS Y PERSPECTIVA ---
-        sidebarContent.add(crearEncabezado("TEXTURAS Y PERSPECTIVA", true));
-
         comboTexturas = new JComboBox<>(new String[]{
                 "Ninguna",
                 "Tablero de Ajedrez",
@@ -360,20 +341,30 @@ public class RasterizerFrame extends JPanel {
         });
         sidebarContent.add(crearFilaControl("Textura 3D:", comboTexturas));
 
-        comboBufferAlgo = new JComboBox<>(new String[]{
-                "Z-Buffer (Lineal 2D)",
-                "W-Buffer (Perspectiva 3D)"
+        comboBgColor = new JComboBox<>(new String[]{"Gris Oscuro", "Negro", "Azul Profundo", "Gris Claro"});
+        comboBgColor.addActionListener(e -> {
+            switch (comboBgColor.getSelectedIndex()) {
+                case 1 -> bgColor = 0xFF000000;
+                case 2 -> bgColor = 0xFF0B0F19;
+                case 3 -> bgColor = 0xFFD2D2D7;
+                default -> bgColor = 0xFF121214;
+            }
         });
-        comboBufferAlgo.setSelectedIndex(1); // W-Buffer por defecto
-        rasterizer.setWBufferEnabled(true);
-        comboBufferAlgo.addActionListener(e -> {
-            int idx = comboBufferAlgo.getSelectedIndex();
-            rasterizer.setWBufferEnabled(idx == 1);
-        });
-        sidebarContent.add(crearFilaControl("Corrección Z/W:", comboBufferAlgo));
+        sidebarContent.add(crearFilaControl("Fondo:", comboBgColor));
 
-        // --- SECCIÓN 3: ROTACIÓN Y CÁMARA ---
-        sidebarContent.add(crearEncabezado("CÁMARA Y PERSPECTIVA", true));
+        comboLineColor = new JComboBox<>(new String[]{"Índigo", "Blanco", "Verde Esmeralda", "Rojo Coral"});
+        comboLineColor.addActionListener(e -> {
+            switch (comboLineColor.getSelectedIndex()) {
+                case 1 -> meshLineColor = 0xFFFFFFFF;
+                case 2 -> meshLineColor = 0xFF34C759;
+                case 3 -> meshLineColor = 0xFFFF3B30;
+                default -> meshLineColor = 0xFF6366F1;
+            }
+        });
+        sidebarContent.add(crearFilaControl("Líneas/Puntos:", comboLineColor));
+
+        // --- SECCIÓN 2: CÁMARA Y ANIMACIÓN ---
+        sidebarContent.add(crearEncabezado("CÁMARA Y ANIMACIÓN", true));
 
         sliderZoom = new JSlider(15, 80, 40); // representa distancia cameraDist (1.5 a 8.0)
         sliderZoom.addChangeListener(e -> cameraDist = sliderZoom.getValue() / 10.0);
@@ -382,8 +373,6 @@ public class RasterizerFrame extends JPanel {
         sliderFov = new JSlider(30, 150, 80); // representa escala FOV
         sliderFov.addChangeListener(e -> fovScale = sliderFov.getValue() / 100.0);
         sidebarContent.add(crearSliderControl("Escala FOV (Zoom):", sliderFov));
-
-        sidebarContent.add(crearEncabezado("ANIMACIÓN Y ROTACIÓN", true));
 
         sliderSpeedX = new JSlider(-100, 100, 10);
         sliderSpeedX.addChangeListener(e -> speedX = sliderSpeedX.getValue() / 1000.0);
@@ -409,33 +398,53 @@ public class RasterizerFrame extends JPanel {
         });
         sidebarContent.add(btnPlayPause);
 
-        // --- SECCIÓN 4: COLORES ---
-        sidebarContent.add(crearEncabezado("APARIENCIA", true));
+        // --- SECCIÓN 3: RASTERIZACIÓN Y Z-BUFFER ---
+        sidebarContent.add(crearEncabezado("RASTERIZACIÓN Y Z-BUFFER", true));
 
-        comboBgColor = new JComboBox<>(new String[]{"Gris Oscuro", "Negro", "Azul Profundo", "Gris Claro"});
-        comboBgColor.addActionListener(e -> {
-            switch (comboBgColor.getSelectedIndex()) {
-                case 1 -> bgColor = 0xFF000000;
-                case 2 -> bgColor = 0xFF0B0F19;
-                case 3 -> bgColor = 0xFFD2D2D7;
-                default -> bgColor = 0xFF121214;
-            }
+        comboLineaAlgo = new JComboBox<>(new String[]{"Bresenham", "DDA"});
+        comboLineaAlgo.addActionListener(e -> {
+            int idx = comboLineaAlgo.getSelectedIndex();
+            activeLineAlgo = LineAlgo.values()[idx];
         });
-        sidebarContent.add(crearFilaControl("Fondo:", comboBgColor));
+        sidebarContent.add(crearFilaControl("Algoritmo Líneas:", comboLineaAlgo));
 
-        comboLineColor = new JComboBox<>(new String[]{"Índigo", "Blanco", "Verde Esmeralda", "Rojo Coral"});
-        comboLineColor.addActionListener(e -> {
-            switch (comboLineColor.getSelectedIndex()) {
-                case 1 -> meshLineColor = 0xFFFFFFFF;
-                case 2 -> meshLineColor = 0xFF34C759;
-                case 3 -> meshLineColor = 0xFFFF3B30;
-                default -> meshLineColor = 0xFF6366F1;
-            }
+        comboBufferAlgo = new JComboBox<>(new String[]{
+                "Z-Buffer (Lineal 2D)",
+                "W-Buffer (Perspectiva 3D)"
         });
-        sidebarContent.add(crearFilaControl("Líneas/Puntos:", comboLineColor));
+        comboBufferAlgo.setSelectedIndex(1); // W-Buffer por defecto
+        rasterizer.setWBufferEnabled(true);
+        comboBufferAlgo.addActionListener(e -> {
+            int idx = comboBufferAlgo.getSelectedIndex();
+            rasterizer.setWBufferEnabled(idx == 1);
+        });
+        sidebarContent.add(crearFilaControl("Corrección Z/W:", comboBufferAlgo));
 
-        // --- SECCIÓN: CAPÍTULO 8 - PIPELINE Y FRAGMENTOS ---
-        sidebarContent.add(crearEncabezado("CAPÍTULO 8: PIPELINE Y FRAGMENTOS", true));
+        checkZBuffer = new JCheckBox("Habilitar Prueba Z-Buffer", true);
+        checkZBuffer.addActionListener(e -> rasterizer.setZBufferEnabled(checkZBuffer.isSelected()));
+        checkZBuffer.setAlignmentX(Component.LEFT_ALIGNMENT);
+        sidebarContent.add(checkZBuffer);
+        sidebarContent.add(Box.createRigidArea(new Dimension(0, 6)));
+
+        checkDepthWrite = new JCheckBox("Habilitar Escritura Profundidad", true);
+        checkDepthWrite.addActionListener(e -> pipeline.setDepthWriteEnabled(checkDepthWrite.isSelected()));
+        checkDepthWrite.setAlignmentX(Component.LEFT_ALIGNMENT);
+        sidebarContent.add(checkDepthWrite);
+        sidebarContent.add(Box.createRigidArea(new Dimension(0, 6)));
+
+        comboDepthFunc = new JComboBox<>(new String[]{
+                "Siempre (ALWAYS)", "Nunca (NEVER)", "Menor (LESS)", "Igual (EQUAL)",
+                "Menor/Igual (LEQUAL)", "Mayor (GREATER)", "Diferente (NOTEQUAL)", "Mayor/Igual (GEQUAL)"
+        });
+        comboDepthFunc.setSelectedIndex(2); // LESS por defecto
+        comboDepthFunc.addActionListener(e -> {
+            int idx = comboDepthFunc.getSelectedIndex();
+            pipeline.setDepthFunction(FragmentPipeline.ComparisonFunction.values()[idx]);
+        });
+        sidebarContent.add(crearFilaControl("Función Profundidad:", comboDepthFunc));
+
+        // --- SECCIÓN 4: PIPELINE DE FRAGMENTOS ---
+        sidebarContent.add(crearEncabezado("PIPELINE DE FRAGMENTOS", true));
 
         checkPipeline = new JCheckBox("Activar Pipeline de Fragmentos", true);
         checkPipeline.addActionListener(e -> {
@@ -446,8 +455,17 @@ public class RasterizerFrame extends JPanel {
         sidebarContent.add(checkPipeline);
         sidebarContent.add(Box.createRigidArea(new Dimension(0, 6)));
 
+        checkMSAA = new JCheckBox("Habilitar 4x MSAA (Multisample)", false);
+        checkMSAA.addActionListener(e -> pipeline.setMsaaEnabled(checkMSAA.isSelected()));
+        checkMSAA.setAlignmentX(Component.LEFT_ALIGNMENT);
+        sidebarContent.add(checkMSAA);
+        sidebarContent.add(Box.createRigidArea(new Dimension(0, 6)));
+
+        // --- SECCIÓN 5: PRUEBAS DE FRAGMENTO ---
+        sidebarContent.add(crearEncabezado("PRUEBAS DE FRAGMENTO", true));
+
         // -- SCISSOR TEST --
-        checkScissor = new JCheckBox("Habilitar Scissor Test", false);
+        checkScissor = new JCheckBox("Habilitar Scissor Test (Recorte)", false);
         checkScissor.addActionListener(e -> {
             pipeline.setScissorEnabled(checkScissor.isSelected());
             canvasPanel.repaint();
@@ -483,10 +501,10 @@ public class RasterizerFrame extends JPanel {
             canvasPanel.repaint();
         });
         sidebarContent.add(crearSliderControl("  Scissor Alto:", sliderScissorH));
-        sidebarContent.add(Box.createRigidArea(new Dimension(0, 6)));
+        sidebarContent.add(Box.createRigidArea(new Dimension(0, 8)));
 
         // -- ALPHA TEST --
-        checkAlphaTest = new JCheckBox("Habilitar Alpha Test", false);
+        checkAlphaTest = new JCheckBox("Habilitar Alpha Test (Transparencia)", false);
         checkAlphaTest.addActionListener(e -> pipeline.setAlphaTestEnabled(checkAlphaTest.isSelected()));
         checkAlphaTest.setAlignmentX(Component.LEFT_ALIGNMENT);
         sidebarContent.add(checkAlphaTest);
@@ -506,38 +524,10 @@ public class RasterizerFrame extends JPanel {
         sliderAlphaRef = new JSlider(0, 255, 128);
         sliderAlphaRef.addChangeListener(e -> pipeline.setAlphaReference(sliderAlphaRef.getValue()));
         sidebarContent.add(crearSliderControl("  Referencia Alpha:", sliderAlphaRef));
-        sidebarContent.add(Box.createRigidArea(new Dimension(0, 6)));
-
-        // -- DEPTH TEST --
-        comboDepthFunc = new JComboBox<>(new String[]{
-                "Siempre (ALWAYS)", "Nunca (NEVER)", "Menor (LESS)", "Igual (EQUAL)",
-                "Menor/Igual (LEQUAL)", "Mayor (GREATER)", "Diferente (NOTEQUAL)", "Mayor/Igual (GEQUAL)"
-        });
-        comboDepthFunc.setSelectedIndex(2); // LESS por defecto
-        comboDepthFunc.addActionListener(e -> {
-            int idx = comboDepthFunc.getSelectedIndex();
-            pipeline.setDepthFunction(FragmentPipeline.ComparisonFunction.values()[idx]);
-        });
-        sidebarContent.add(crearFilaControl("  Función Depth:", comboDepthFunc));
-
-        checkDepthWrite = new JCheckBox("Habilitar Escritura Profundidad", true);
-        checkDepthWrite.addActionListener(e -> pipeline.setDepthWriteEnabled(checkDepthWrite.isSelected()));
-        checkDepthWrite.setAlignmentX(Component.LEFT_ALIGNMENT);
-        sidebarContent.add(checkDepthWrite);
-        sidebarContent.add(Box.createRigidArea(new Dimension(0, 6)));
-
-        // -- MSAA --
-        checkMSAA = new JCheckBox("Habilitar 4x MSAA (Multisample)", false);
-        checkMSAA.addActionListener(e -> pipeline.setMsaaEnabled(checkMSAA.isSelected()));
-        checkMSAA.setAlignmentX(Component.LEFT_ALIGNMENT);
-        sidebarContent.add(checkMSAA);
-        sidebarContent.add(Box.createRigidArea(new Dimension(0, 6)));
-
-        // --- SECCIÓN: CAPÍTULO 9 - OPERACIONES AVANZADAS ---
-        sidebarContent.add(crearEncabezado("CAPÍTULO 9: OPERACIONES AVANZADAS", true));
+        sidebarContent.add(Box.createRigidArea(new Dimension(0, 8)));
 
         // -- STENCIL TEST --
-        checkStencil = new JCheckBox("Habilitar Stencil Test", false);
+        checkStencil = new JCheckBox("Habilitar Stencil Test (Plantilla)", false);
         checkStencil.addActionListener(e -> pipeline.setStencilEnabled(checkStencil.isSelected()));
         checkStencil.setAlignmentX(Component.LEFT_ALIGNMENT);
         sidebarContent.add(checkStencil);
@@ -584,9 +574,11 @@ public class RasterizerFrame extends JPanel {
             pipeline.setStencilPassOp(FragmentPipeline.StencilOp.values()[idx]);
         });
         sidebarContent.add(crearFilaControl("  Op Z-Pass (dppass):", comboStencilPassOp));
-        sidebarContent.add(Box.createRigidArea(new Dimension(0, 6)));
+        sidebarContent.add(Box.createRigidArea(new Dimension(0, 8)));
 
-        // -- BLENDING --
+        // --- SECCIÓN 6: MEZCLA Y OPERACIONES LÓGICAS ---
+        sidebarContent.add(crearEncabezado("MEZCLA Y OPERACIONES LÓGICAS", true));
+
         comboBlendingMode = new JComboBox<>(new String[]{
                 "Ninguno (NONE)", "Transparencia (ALPHA)", "Aditivo (ADDITIVE)", "Multiplicativo (MULTIPLICATIVE)"
         });
@@ -598,7 +590,6 @@ public class RasterizerFrame extends JPanel {
         sidebarContent.add(crearFilaControl("Modo Mezcla:", comboBlendingMode));
         sidebarContent.add(Box.createRigidArea(new Dimension(0, 6)));
 
-        // -- LOGIC OP --
         checkLogicOp = new JCheckBox("Habilitar Logic Op", false);
         checkLogicOp.addActionListener(e -> pipeline.setLogicOpEnabled(checkLogicOp.isSelected()));
         checkLogicOp.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -614,10 +605,10 @@ public class RasterizerFrame extends JPanel {
             pipeline.setLogicOp(FragmentPipeline.LogicOpMode.values()[idx]);
         });
         sidebarContent.add(crearFilaControl("  Op Lógica:", comboLogicOp));
-        sidebarContent.add(Box.createRigidArea(new Dimension(0, 6)));
+        sidebarContent.add(Box.createRigidArea(new Dimension(0, 8)));
 
-        // --- SECCIÓN: CAPÍTULO 10 - BUFFER DE ACUMULACIÓN ---
-        sidebarContent.add(crearEncabezado("CAPÍTULO 10: BUFFER DE ACUMULACIÓN", true));
+        // --- SECCIÓN 7: EFECTOS DE ACUMULACIÓN ---
+        sidebarContent.add(crearEncabezado("EFECTOS DE ACUMULACIÓN", true));
 
         JComboBox<String> comboAccumMode = new JComboBox<>(new String[]{
                 "Ninguno (NONE)", "Motion Blur Temporal", "Motion Blur Offline", "Profundidad de Campo", "Antialiasing (FSAA)"
@@ -960,8 +951,8 @@ public class RasterizerFrame extends JPanel {
                 if (vLen > 0) { vx /= vLen; vy /= vLen; vz /= vLen; }
 
                 double cullDot = nx * vx + ny * vy + nz * vz;
-                // Si la cara está mirando en dirección contraria a la cámara (dot < 0), la descartamos
-                if (cullDot < -0.05) {
+                // Si la cara está mirando en dirección contraria a la cámara (dot > 0.05), la descartamos
+                if (cullDot > 0.05) {
                     continue;
                 }
             }
